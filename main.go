@@ -53,7 +53,7 @@ func main() {
 		if err != nil {
 			log.Errorf("PostComment error: %v.", err)
 		} else {
-			log.Info("PostComment success!: %s", comment)
+			log.Infof("PostComment success!: %s", comment)
 		}
 	}
 }
