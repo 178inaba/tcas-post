@@ -1,18 +1,14 @@
 package client
 
 import (
-	"bytes"
+	"encoding/json"
 	"fmt"
-	"io"
-	"io/ioutil"
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
-	"regexp"
 	"strconv"
 	"strings"
 
-	debug "github.com/178inaba/go.debug"
 	"github.com/PuerkitoBio/goquery"
 	"github.com/pkg/errors"
 )
@@ -26,14 +22,14 @@ const (
 type Client struct {
 	httpClient *http.Client
 
-	username    string
-	password    string
-	csSessionID string
+	username string
+	password string
 }
 
 // Comment is ...
 type Comment struct {
-	ID int `json:"id"`
+	ID    int    `json:"id"`
+	Class string `json:"class"`
 }
 
 // NewClient is ...
@@ -117,13 +113,7 @@ func (c *Client) GetMovieID(hostName string) (int, error) {
 		return 0, errors.Errorf("status: %d", resp.StatusCode)
 	}
 
-	var queryBuf, regexpBuf bytes.Buffer
-	w := io.MultiWriter(&queryBuf, &regexpBuf)
-	if _, err := io.Copy(w, resp.Body); err != nil {
-		return 0, err
-	}
-
-	doc, err := goquery.NewDocumentFromReader(&queryBuf)
+	doc, err := goquery.NewDocumentFromReader(resp.Body)
 	if err != nil {
 		return 0, err
 	}
@@ -139,15 +129,6 @@ func (c *Client) GetMovieID(hostName string) (int, error) {
 		return 0, err
 	}
 
-	bodyBytes, err := ioutil.ReadAll(&regexpBuf)
-	if err != nil {
-		return 0, err
-	}
-
-	re := regexp.MustCompile("\"cs_session_id\":\"(.*?)\"")
-	matches := re.FindStringSubmatch(string(bodyBytes))
-	c.csSessionID = matches[len(matches)-1]
-
 	return movieID, nil
 }
 
@@ -156,7 +137,6 @@ func (c *Client) PostComment(comment, hostName string, movieID int) error {
 	param := url.Values{}
 	param.Set("m", fmt.Sprint(movieID))
 	param.Set("s", comment)
-	param.Set("cs_session_id", c.csSessionID)
 	req, err := http.NewRequest(http.MethodPost,
 		fmt.Sprintf("http://twitcasting.tv/%s/userajax.php", hostName), strings.NewReader(param.Encode()))
 	if err != nil {
@@ -177,6 +157,23 @@ func (c *Client) PostComment(comment, hostName string, movieID int) error {
 	}
 	defer resp.Body.Close()
 
-	debug.DumpRespAll(resp)
+	var comments []Comment
+	err = json.NewDecoder(resp.Body).Decode(&comments)
+	if err != nil {
+		return err
+	}
+
+	var result bool
+	for _, comment := range comments {
+		if comment.Class == "you" {
+			result = true
+			break
+		}
+	}
+
+	if !result {
+		return errors.New("post error")
+	}
+
 	return nil
 }
