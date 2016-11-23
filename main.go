@@ -1,8 +1,8 @@
 package main
 
 import (
-	"github.com/178inaba/tcas-post/client"
 	"github.com/178inaba/tcas-post/conf"
+	"github.com/178inaba/twitcasting"
 	log "github.com/Sirupsen/logrus"
 	kingpin "gopkg.in/alecthomas/kingpin.v2"
 )
@@ -25,7 +25,7 @@ func main() {
 		log.Fatalf("LoadConf error: %v.", err)
 	}
 
-	c, err := client.NewClient(cf.Username, cf.Password)
+	c, err := twitcasting.NewClient(cf.Username, cf.Password)
 	if err != nil {
 		log.Fatalf("NewClient error: %v.", err)
 	}
