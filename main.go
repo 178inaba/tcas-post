@@ -1,6 +1,8 @@
 package main
 
 import (
+	"time"
+
 	"github.com/178inaba/tcas-post/conf"
 	"github.com/178inaba/twitcasting"
 	log "github.com/Sirupsen/logrus"
@@ -42,8 +44,12 @@ func main() {
 		log.Fatalf("GetMovieID error: %v.", err)
 	}
 
-	err = c.PostComment(comment, hostName, movieID)
-	if err != nil {
-		log.Fatalf("PostComment error: %v.", err)
+	for {
+		err = c.PostComment(comment, hostName, movieID)
+		if err != nil {
+			log.Fatalf("PostComment error: %v.", err)
+		}
+
+		time.Sleep(time.Minute)
 	}
 }
