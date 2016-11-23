@@ -9,6 +9,7 @@ import (
 
 var (
 	hostNameArg  = kingpin.Arg("host", "Broadcast host name.").Required().String()
+	commentArg   = kingpin.Arg("comment", "Post comment.").Required().String()
 	confPathFlag = kingpin.Flag("config", "Config toml file path.").Default("etc/conf.toml").Short('c').String()
 )
 
@@ -18,6 +19,7 @@ func init() {
 
 func main() {
 	hostName := *hostNameArg
+	comment := *commentArg
 	confPath := *confPathFlag
 
 	cf, err := conf.LoadConf(confPath)
@@ -40,7 +42,7 @@ func main() {
 		log.Fatalf("GetMovieID error: %v.", err)
 	}
 
-	err = c.PostComment("www", hostName, movieID)
+	err = c.PostComment(comment, hostName, movieID)
 	if err != nil {
 		log.Fatalf("PostComment error: %v.", err)
 	}
