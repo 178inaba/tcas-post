@@ -40,18 +40,20 @@ func main() {
 
 	rand.Seed(time.Now().UnixNano())
 	for {
+		time.Sleep(time.Minute * 1)
+
 		movieID, err := c.GetMovieID(hostName)
 		if err != nil {
 			log.Errorf("GetMovieID error: %v.", err)
+			continue
 		}
 
-		err = c.PostComment(cf.Comments[rand.Intn(len(cf.Comments))], hostName, movieID)
+		comment := cf.Comments[rand.Intn(len(cf.Comments))]
+		err = c.PostComment(comment, hostName, movieID)
 		if err != nil {
 			log.Errorf("PostComment error: %v.", err)
 		} else {
-			log.Info("PostComment success!")
+			log.Info("PostComment success!: %s", comment)
 		}
-
-		time.Sleep(time.Minute / 2)
 	}
 }
