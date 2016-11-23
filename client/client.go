@@ -1,14 +1,18 @@
 package client
 
 import (
-	"encoding/json"
+	"bytes"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
+	"regexp"
 	"strconv"
 	"strings"
 
+	debug "github.com/178inaba/go.debug"
 	"github.com/PuerkitoBio/goquery"
 	"github.com/pkg/errors"
 )
@@ -22,8 +26,9 @@ const (
 type Client struct {
 	httpClient *http.Client
 
-	username string
-	password string
+	username    string
+	password    string
+	csSessionID string
 }
 
 // Comment is ...
@@ -112,7 +117,13 @@ func (c *Client) GetMovieID(hostName string) (int, error) {
 		return 0, errors.Errorf("status: %d", resp.StatusCode)
 	}
 
-	doc, err := goquery.NewDocumentFromResponse(resp)
+	var queryBuf, regexpBuf bytes.Buffer
+	w := io.MultiWriter(&queryBuf, &regexpBuf)
+	if _, err := io.Copy(w, resp.Body); err != nil {
+		return 0, err
+	}
+
+	doc, err := goquery.NewDocumentFromReader(&queryBuf)
 	if err != nil {
 		return 0, err
 	}
@@ -128,39 +139,44 @@ func (c *Client) GetMovieID(hostName string) (int, error) {
 		return 0, err
 	}
 
-	return movieID, nil
-}
-
-// GetLastCommentID is ...
-func (c *Client) GetLastCommentID(hostName string, movieID int) (int, error) {
-	req, err := http.NewRequest(http.MethodGet,
-		fmt.Sprintf("http://twitcasting.tv/%s/userajax.php", hostName), nil)
+	bodyBytes, err := ioutil.ReadAll(&regexpBuf)
 	if err != nil {
 		return 0, err
 	}
 
+	re := regexp.MustCompile("\"cs_session_id\":\"(.*?)\"")
+	matches := re.FindStringSubmatch(string(bodyBytes))
+	c.csSessionID = matches[len(matches)-1]
+
+	return movieID, nil
+}
+
+// PostComment is ...
+func (c *Client) PostComment(comment, hostName string, movieID int) error {
+	param := url.Values{}
+	param.Set("m", fmt.Sprint(movieID))
+	param.Set("s", comment)
+	param.Set("cs_session_id", c.csSessionID)
+	req, err := http.NewRequest(http.MethodPost,
+		fmt.Sprintf("http://twitcasting.tv/%s/userajax.php", hostName), strings.NewReader(param.Encode()))
+	if err != nil {
+		return err
+	}
+
 	q := req.URL.Query()
-	q.Add("c", "listall")
-	q.Add("f", fmt.Sprint(0))
-	q.Add("k", fmt.Sprint(0))
-	q.Add("m", fmt.Sprint(movieID))
-	q.Add("n", fmt.Sprint(10))
+	q.Add("c", "post")
 	req.URL.RawQuery = q.Encode()
 
 	req.Header.Set("Accept-Language", "ja")
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("User-Agent", userAgent)
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		return 0, err
+		return err
 	}
 	defer resp.Body.Close()
 
-	var comments []Comment
-	err = json.NewDecoder(resp.Body).Decode(&comments)
-	if err != nil {
-		return 0, err
-	}
-
-	return comments[len(comments)-1].ID, nil
+	debug.DumpRespAll(resp)
+	return nil
 }

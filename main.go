@@ -8,8 +8,8 @@ import (
 )
 
 var (
-	hostName = kingpin.Arg("host", "Broadcast host name.").Required().String()
-	confPath = kingpin.Flag("config", "Config toml file path.").Default("etc/conf.toml").Short('c').String()
+	hostNameArg  = kingpin.Arg("host", "Broadcast host name.").Required().String()
+	confPathFlag = kingpin.Flag("config", "Config toml file path.").Default("etc/conf.toml").Short('c').String()
 )
 
 func init() {
@@ -17,30 +17,31 @@ func init() {
 }
 
 func main() {
-	cf, err := conf.LoadConf(*confPath)
+	hostName := *hostNameArg
+	confPath := *confPathFlag
+
+	cf, err := conf.LoadConf(confPath)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("LoadConf error: %v.", err)
 	}
 
 	c, err := client.NewClient(cf.Username, cf.Password)
 	if err != nil {
-		log.Fatal("Fail create client.")
+		log.Fatalf("NewClient error: %v.", err)
 	}
 
 	err = c.Auth()
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("Auth error: %v.", err)
 	}
 
-	movieID, err := c.GetMovieID(*hostName)
+	movieID, err := c.GetMovieID(hostName)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("GetMovieID error: %v.", err)
 	}
 
-	lastCommentID, err := c.GetLastCommentID(*hostName, movieID)
+	err = c.PostComment("www", hostName, movieID)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("PostComment error: %v.", err)
 	}
-
-	log.Info(lastCommentID)
 }
