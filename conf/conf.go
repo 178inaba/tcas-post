@@ -8,8 +8,9 @@ import (
 
 // Conf is ...
 type Conf struct {
-	Username string `toml:"username"`
-	Password string `toml:"password"`
+	Username string   `toml:"username"`
+	Password string   `toml:"password"`
+	Comments []string `toml:"comments"`
 }
 
 // LoadConf is ...

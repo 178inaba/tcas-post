@@ -1,6 +1,7 @@
 package main
 
 import (
+	"math/rand"
 	"time"
 
 	"github.com/178inaba/tcas-post/conf"
@@ -11,7 +12,6 @@ import (
 
 var (
 	hostNameArg  = kingpin.Arg("host", "Broadcast host name.").Required().String()
-	commentArg   = kingpin.Arg("comment", "Post comment.").Required().String()
 	confPathFlag = kingpin.Flag("config", "Config toml file path.").Default("etc/conf.toml").Short('c').String()
 )
 
@@ -21,7 +21,6 @@ func init() {
 
 func main() {
 	hostName := *hostNameArg
-	comment := *commentArg
 	confPath := *confPathFlag
 
 	cf, err := conf.LoadConf(confPath)
@@ -39,17 +38,20 @@ func main() {
 		log.Fatalf("Auth error: %v.", err)
 	}
 
-	movieID, err := c.GetMovieID(hostName)
-	if err != nil {
-		log.Fatalf("GetMovieID error: %v.", err)
-	}
-
+	rand.Seed(time.Now().UnixNano())
 	for {
-		err = c.PostComment(comment, hostName, movieID)
+		movieID, err := c.GetMovieID(hostName)
 		if err != nil {
-			log.Fatalf("PostComment error: %v.", err)
+			log.Errorf("GetMovieID error: %v.", err)
 		}
 
-		time.Sleep(time.Minute)
+		err = c.PostComment(cf.Comments[rand.Intn(len(cf.Comments))], hostName, movieID)
+		if err != nil {
+			log.Errorf("PostComment error: %v.", err)
+		} else {
+			log.Info("PostComment success!")
+		}
+
+		time.Sleep(time.Minute / 2)
 	}
 }
