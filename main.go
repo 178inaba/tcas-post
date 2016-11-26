@@ -1,59 +1,79 @@
 package main
 
 import (
-	"math/rand"
-	"time"
+	"fmt"
+	"os"
 
-	"github.com/178inaba/tcas-post/conf"
 	"github.com/178inaba/twitcasting"
 	log "github.com/Sirupsen/logrus"
-	kingpin "gopkg.in/alecthomas/kingpin.v2"
+	"github.com/howeyc/gopass"
+	"github.com/urfave/cli"
 )
 
-var (
-	hostNameArg  = kingpin.Arg("host", "Broadcast host name.").Required().String()
-	confPathFlag = kingpin.Flag("config", "Config toml file path.").Default("etc/conf.toml").Short('c').String()
+const (
+	failExitStatusCode = 1
 )
 
-func init() {
-	kingpin.Parse()
+type poster struct {
+	client *twitcasting.Client
 }
 
 func main() {
-	hostName := *hostNameArg
-	confPath := *confPathFlag
+	var username, password string
 
-	cf, err := conf.LoadConf(confPath)
+	// Login username from stdin.
+	fmt.Print("Username: ")
+	fmt.Scanln(&username)
+
+	// Password from stdin.
+	fmt.Print("Password: ")
+	pBytes, err := gopass.GetPasswd()
 	if err != nil {
-		log.Fatalf("LoadConf error: %v.", err)
+		log.Fatalf("Input Password error: %v.", err)
 	}
 
-	c, err := twitcasting.NewClient(cf.Username, cf.Password)
+	password = string(pBytes)
+
+	client, err := twitcasting.NewClient(username, password)
 	if err != nil {
 		log.Fatalf("NewClient error: %v.", err)
 	}
 
-	err = c.Auth()
+	p := &poster{client: client}
+
+	app := cli.NewApp()
+	app.Name = "tcpost"
+	app.HelpName = app.Name
+	app.Usage = "Post comment to TwitCasting."
+	app.Version = "1.0.0"
+	app.Action = p.action
+
+	err = app.Run(os.Args)
 	if err != nil {
-		log.Fatalf("Auth error: %v.", err)
+		log.Fatalf("Run error: %v", err)
+	}
+}
+
+func (p *poster) action(c *cli.Context) error {
+	target := c.Args().Get(0)
+	comment := c.Args().Get(1)
+
+	err := p.client.Auth()
+	if err != nil {
+		return cli.NewExitError(err.Error(), failExitStatusCode)
 	}
 
-	rand.Seed(time.Now().UnixNano())
-	for {
-		time.Sleep(time.Minute * 1)
-
-		movieID, err := c.GetMovieID(hostName)
-		if err != nil {
-			log.Errorf("GetMovieID error: %v.", err)
-			continue
-		}
-
-		comment := cf.Comments[rand.Intn(len(cf.Comments))]
-		err = c.PostComment(comment, hostName, movieID)
-		if err != nil {
-			log.Errorf("PostComment error: %v.", err)
-		} else {
-			log.Infof("PostComment success!: %s", comment)
-		}
+	movieID, err := p.client.GetMovieID(target)
+	if err != nil {
+		return cli.NewExitError(err.Error(), failExitStatusCode)
 	}
+
+	err = p.client.PostComment(comment, target, movieID)
+	if err != nil {
+		return cli.NewExitError(err.Error(), failExitStatusCode)
+	}
+
+	log.Infof("PostComment success!: %s", comment)
+
+	return nil
 }
