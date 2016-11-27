@@ -10,6 +10,9 @@ import (
 
 func main() {
 	p, err := poster.NewPoster()
+	if err != nil {
+		log.Fatalf("New poster error: %v", err)
+	}
 
 	app := cli.NewApp()
 	app.Name = "tcpost"
