@@ -3,6 +3,7 @@ package poster
 import (
 	"fmt"
 
+	"github.com/178inaba/tcpost/config"
 	"github.com/178inaba/twitcasting"
 	log "github.com/Sirupsen/logrus"
 	"github.com/howeyc/gopass"
@@ -21,6 +22,26 @@ type Poster struct {
 
 // NewPoster is ...
 func NewPoster() (*Poster, error) {
+	ac, err := config.LoadAccount()
+	if err != nil {
+		if _, ok := err.(config.Exist); !ok {
+			return nil, errors.Wrap(err, "load account error")
+		}
+
+		ac, err = inputAccount()
+	}
+
+	client, err := twitcasting.NewClient(ac.Username, ac.Password)
+	if err != nil {
+		return nil, errors.Wrap(err, "new twitcasting client error")
+	}
+
+	p := &Poster{client: client}
+
+	return p, nil
+}
+
+func inputAccount() (*config.Account, error) {
 	var username, password string
 
 	// Login username from stdin.
@@ -36,14 +57,7 @@ func NewPoster() (*Poster, error) {
 
 	password = string(pBytes)
 
-	client, err := twitcasting.NewClient(username, password)
-	if err != nil {
-		return nil, errors.Wrap(err, "new twitcasting client error")
-	}
-
-	p := &Poster{client: client}
-
-	return p, nil
+	return &config.Account{Username: username, Password: password}, nil
 }
 
 // Action is ...
