@@ -64,7 +64,14 @@ func inputAccount() (*config.Account, error) {
 // Action is ...
 func (p *Poster) Action(c *cli.Context) error {
 	target := c.Args().Get(0)
+	if target == "" {
+		return cli.NewExitError("Target username not found.", failExitStatusCode)
+	}
+
 	comment := c.Args().Get(1)
+	if comment == "" {
+		return cli.NewExitError("post comment not found.", failExitStatusCode)
+	}
 
 	err := p.client.Auth()
 	if err != nil {
