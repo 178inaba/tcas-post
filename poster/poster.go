@@ -29,6 +29,7 @@ func NewPoster() (*Poster, error) {
 		}
 
 		ac, err = inputAccount()
+		ac.Save()
 	}
 
 	client, err := twitcasting.NewClient(ac.Username, ac.Password)
@@ -67,6 +68,7 @@ func (p *Poster) Action(c *cli.Context) error {
 
 	err := p.client.Auth()
 	if err != nil {
+		config.RemoveAccountFile()
 		return cli.NewExitError(err.Error(), failExitStatusCode)
 	}
 

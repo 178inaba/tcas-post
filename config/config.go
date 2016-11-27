@@ -57,6 +57,18 @@ func LoadAccount() (*Account, error) {
 	return account, nil
 }
 
+// RemoveAccountFile ...
+func RemoveAccountFile() error {
+	accountFilePath, err := getAccountFilePath()
+	if err != nil {
+		return err
+	}
+
+	os.Remove(accountFilePath)
+
+	return nil
+}
+
 func getAccountFilePath() (string, error) {
 	home, err := homedir.Dir()
 	if err != nil {
@@ -64,4 +76,31 @@ func getAccountFilePath() (string, error) {
 	}
 
 	return filepath.Join(home, configDirName, accountFileName), nil
+}
+
+// Save is ...
+func (a *Account) Save() error {
+	accountFilePath, err := getAccountFilePath()
+	if err != nil {
+		return err
+	}
+
+	_, err = os.Stat(filepath.Dir(accountFilePath))
+	if err != nil {
+		os.Mkdir(filepath.Dir(accountFilePath), os.ModePerm)
+	}
+
+	accountFile, err := os.Create(accountFilePath)
+	if err != nil {
+		return err
+	}
+
+	defer accountFile.Close()
+
+	err = toml.NewEncoder(accountFile).Encode(a)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
