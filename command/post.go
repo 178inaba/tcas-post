@@ -54,7 +54,7 @@ func inputAccount() (*config.Account, error) {
 func Post(c *cli.Context) error {
 	target := c.Args().Get(0)
 	if target == "" {
-		return cli.NewExitError("Target username not found.", failExitStatusCode)
+		return cli.ShowAppHelp(c)
 	}
 
 	comment := c.Args().Get(1)
