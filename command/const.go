@@ -1,5 +1,3 @@
 package command
 
-const (
-	failExitStatusCode = 1
-)
+const failExitStatusCode = 1
