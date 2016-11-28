@@ -5,18 +5,19 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/BurntSushi/toml"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestLoadConf(t *testing.T) {
-	var existConfigDir, existAccountFile bool
+func TestLoadAccount(t *testing.T) {
+	var existConfigDir bool
 	accountFilePath, err := getAccountFilePath()
 	if err == nil {
 		_, err := os.Stat(accountFilePath)
 		if err == nil {
-			existConfigDir, existAccountFile = true, true
-			os.Rename(accountFilePath, accountFilePath+".tmp")
+			existConfigDir = true
+			err := os.Rename(accountFilePath, accountFilePath+".tmp")
+			defer os.Rename(accountFilePath+".tmp", accountFilePath)
+			assert.NoError(t, err)
 		} else {
 			_, err := os.Stat(filepath.Dir(accountFilePath))
 			if err == nil {
@@ -33,27 +34,21 @@ func TestLoadConf(t *testing.T) {
 	assert.False(t, ex.Exist())
 
 	if !existConfigDir {
-		os.Mkdir(filepath.Dir(accountFilePath), os.ModePerm)
+		err := os.Mkdir(filepath.Dir(accountFilePath), os.ModePerm)
+		defer os.Remove(filepath.Dir(accountFilePath))
+		assert.NoError(t, err)
 	}
 
-	accountFile, err := os.Create(accountFilePath)
-	assert.NoError(t, err)
-
 	uname, pass := "test", "pass"
-	err = toml.NewEncoder(accountFile).Encode(Account{Username: uname, Password: pass})
-	accountFile.Close()
+	saveAc := &Account{Username: uname, Password: pass}
+	err = saveAc.Save()
+	defer os.Remove(accountFilePath)
 	assert.NoError(t, err)
+	assert.Equal(t, uname, saveAc.Username)
+	assert.Equal(t, pass, saveAc.Password)
 
 	account, err := LoadAccount()
 	assert.NoError(t, err)
 	assert.Equal(t, uname, account.Username)
 	assert.Equal(t, pass, account.Password)
-
-	os.Remove(accountFilePath)
-
-	if existAccountFile {
-		os.Rename(accountFilePath+".tmp", accountFilePath)
-	} else if !existConfigDir {
-		os.Remove(filepath.Dir(accountFilePath))
-	}
 }
