@@ -72,7 +72,9 @@ func RemoveAccountFile() error {
 		return err
 	}
 
-	os.Remove(accountFilePath)
+	if err := os.Remove(accountFilePath); err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -94,7 +96,9 @@ func (a *Account) Save() error {
 	}
 
 	if _, err = os.Stat(filepath.Dir(accountFilePath)); err != nil {
-		os.Mkdir(filepath.Dir(accountFilePath), os.ModePerm)
+		if err := os.Mkdir(filepath.Dir(accountFilePath), os.ModePerm); err != nil {
+			return err
+		}
 	}
 
 	accountFile, err := os.Create(accountFilePath)

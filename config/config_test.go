@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestLoadAccount(t *testing.T) {
+func TestAccount(t *testing.T) {
 	var existConfigDir bool
 	accountFilePath, err := getAccountFilePath()
 	if err == nil {
@@ -41,6 +41,16 @@ func TestLoadAccount(t *testing.T) {
 
 	uname, pass := "test", "pass"
 	saveAc := &Account{Username: uname, Password: pass}
+	saveAc.encrypt()
+	assert.NotEmpty(t, saveAc.Username)
+	assert.NotEmpty(t, saveAc.Password)
+	assert.NotEqual(t, uname, saveAc.Username)
+	assert.NotEqual(t, pass, saveAc.Password)
+
+	saveAc.decrypt()
+	assert.Equal(t, uname, saveAc.Username)
+	assert.Equal(t, pass, saveAc.Password)
+
 	err = saveAc.Save()
 	defer os.Remove(accountFilePath)
 	assert.NoError(t, err)
@@ -51,4 +61,10 @@ func TestLoadAccount(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, uname, account.Username)
 	assert.Equal(t, pass, account.Password)
+
+	_, err = os.Stat(accountFilePath)
+	assert.NoError(t, err)
+
+	err = RemoveAccountFile()
+	assert.NoError(t, err)
 }
