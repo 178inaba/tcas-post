@@ -3,26 +3,27 @@ package main
 import (
 	"os"
 
-	"github.com/178inaba/tcpost/poster"
+	"github.com/178inaba/tcpost/command"
 	log "github.com/Sirupsen/logrus"
 	"github.com/urfave/cli"
 )
 
 func main() {
-	p, err := poster.NewPoster()
-	if err != nil {
-		log.Fatalf("New poster error: %v", err)
-	}
-
 	app := cli.NewApp()
 	app.Name = "tcpost"
 	app.HelpName = app.Name
 	app.Usage = "Post comment to TwitCasting."
 	app.Version = "1.0.0"
-	app.Action = p.Action
+	app.Action = command.Post
+	app.Commands = []cli.Command{
+		{
+			Name:   "logout",
+			Usage:  "Logout TwitCasting.",
+			Action: command.Logout,
+		},
+	}
 
-	err = app.Run(os.Args)
-	if err != nil {
+	if err := app.Run(os.Args); err != nil {
 		log.Fatalf("Run error: %v", err)
 	}
 }

@@ -1,4 +1,4 @@
-package poster
+package command
 
 import (
 	"fmt"
@@ -11,17 +11,8 @@ import (
 	"github.com/urfave/cli"
 )
 
-const (
-	failExitStatusCode = 1
-)
-
-// Poster is ...
-type Poster struct {
-	client *twitcasting.Client
-}
-
-// NewPoster is ...
-func NewPoster() (*Poster, error) {
+// newTCClient create TwitCasting client.
+func newTCClient() (*twitcasting.Client, error) {
 	ac, err := config.LoadAccount()
 	if err != nil {
 		if _, ok := err.(config.Exist); !ok {
@@ -34,12 +25,10 @@ func NewPoster() (*Poster, error) {
 
 	client, err := twitcasting.NewClient(ac.Username, ac.Password)
 	if err != nil {
-		return nil, errors.Wrap(err, "new twitcasting client error")
+		return nil, err
 	}
 
-	p := &Poster{client: client}
-
-	return p, nil
+	return client, nil
 }
 
 func inputAccount() (*config.Account, error) {
@@ -61,8 +50,8 @@ func inputAccount() (*config.Account, error) {
 	return &config.Account{Username: username, Password: password}, nil
 }
 
-// Action is ...
-func (p *Poster) Action(c *cli.Context) error {
+// Post is ...
+func Post(c *cli.Context) error {
 	target := c.Args().Get(0)
 	if target == "" {
 		return cli.NewExitError("Target username not found.", failExitStatusCode)
@@ -73,19 +62,22 @@ func (p *Poster) Action(c *cli.Context) error {
 		return cli.NewExitError("post comment not found.", failExitStatusCode)
 	}
 
-	err := p.client.Auth()
+	client, err := newTCClient()
 	if err != nil {
+		return cli.NewExitError(err.Error(), failExitStatusCode)
+	}
+
+	if err := client.Auth(); err != nil {
 		config.RemoveAccountFile()
 		return cli.NewExitError(err.Error(), failExitStatusCode)
 	}
 
-	movieID, err := p.client.GetMovieID(target)
+	movieID, err := client.GetMovieID(target)
 	if err != nil {
 		return cli.NewExitError(err.Error(), failExitStatusCode)
 	}
 
-	err = p.client.PostComment(comment, target, movieID)
-	if err != nil {
+	if err = client.PostComment(comment, target, movieID); err != nil {
 		return cli.NewExitError(err.Error(), failExitStatusCode)
 	}
 
